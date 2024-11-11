@@ -1,0 +1,81 @@
+
+### Shared Memory IPC in Docker
+
+**Description**:
+Shared memory is an IPC mechanism where two or more processes can share a common segment of memory. 
+In this example, we simulate shared memory using a Docker Volume. The client writes to a shared file, 
+and the server reads from it.
+
+#### Directory Structure
+```
+docker-ipc-project/
+└── shared_memory/
+    ├── Dockerfile.server
+    ├── Dockerfile.client
+    ├── server.py
+    └── client.py
+```
+
+#### Dockerfile.server
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY server.py /app/
+CMD ["python", "server.py"]
+```
+
+#### Dockerfile.client
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY client.py /app/
+CMD ["python", "client.py"]
+```
+
+#### server.py
+```
+import os
+import time
+
+shared_file_path = "/shared_data/shared_memory.txt"
+print("Server started, monitoring shared memory...")
+
+while True:
+    if os.path.exists(shared_file_path):
+        with open(shared_file_path, "r") as file:
+            data = file.read()
+            if data:
+                print(f"Server read: {data}")
+    time.sleep(2)
+```
+
+#### client.py
+```
+import time
+shared_file_path = "/shared_data/shared_memory.txt"
+print("Client started, writing to shared memory...")
+while True:
+    with open(shared_file_path, "w") as file:
+        file.write("Hello from Client")
+    time.sleep(2)
+```
+
+#### Steps
+1. Create Docker Volume:
+   ```
+   docker volume create shared_data
+   ```
+2. Build Docker Images:
+   ```
+   docker build -t shared-memory-server -f Dockerfile.server .
+   docker build -t shared-memory-client -f Dockerfile.client .
+   ```
+3. Run Server and Client Containers:
+   ```
+   docker run -d --name server-container --mount source=shared_data,target=/shared_data shared-memory-server
+   docker run -d --name client-container --mount source=shared_data,target=/shared_data shared-memory-client
+   ```
+4. Check Logs:
+   ```
+   docker logs -f server-container
+   ```

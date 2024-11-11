@@ -1,0 +1,78 @@
+
+### Message Passing IPC in Docker
+
+**Description**:
+Message passing is an IPC mechanism where processes exchange data using explicit send and receive operations. 
+In this example, the server listens for messages from the client using socket communication.
+
+#### Directory Structure
+```
+docker-ipc-project/
+└── msg_passing/
+    ├── Dockerfile.server
+    ├── Dockerfile.client
+    ├── server.py
+    └── client.py
+```
+
+#### Dockerfile.server
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY server.py /app/
+CMD ["python", "server.py"]
+```
+
+#### Dockerfile.client
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY client.py /app/
+CMD ["python", "client.py"]
+```
+
+#### server.py
+```
+import socket
+
+HOST = '0.0.0.0'
+PORT = 5000
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen()
+print("Server is listening...")
+
+while True:
+    client_socket, addr = server_socket.accept()
+    message = client_socket.recv(1024).decode()
+    print(f"Server received: {message}")
+    client_socket.close()
+```
+
+#### client.py
+```
+import socket
+
+HOST = 'server-container'
+PORT = 5000
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((HOST, PORT))
+client_socket.sendall(b'Hello from Client')
+client_socket.close()
+```
+
+#### Steps
+1. Build Docker Images:
+   ```
+   docker build -t msg-passing-server -f Dockerfile.server .
+   docker build -t msg-passing-client -f Dockerfile.client .
+   ```
+2. Run Server and Client Containers:
+   ```
+   docker run -d --name msg-server-container msg-passing-server
+   docker run -d --name msg-client-container --network container:msg-server-container msg-passing-client
+   ```
+3. Check Logs:
+   ```
+   docker logs -f msg-server-container
+   ```

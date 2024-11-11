@@ -1,0 +1,80 @@
+
+### TCP/UDP Socket Communication IPC in Docker
+
+**Description**:
+This example demonstrates simple TCP socket communication between a client and a server. The server listens on a port, and the client connects to it to send a message.
+
+#### Directory Structure
+```
+docker-ipc-project/
+└── socket_comm/
+    ├── Dockerfile.server
+    ├── Dockerfile.client
+    ├── server.py
+    └── client.py
+```
+
+#### Dockerfile.server
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY server.py /app/
+CMD ["python", "server.py"]
+```
+
+#### Dockerfile.client
+```
+FROM python:3.9-slim
+WORKDIR /app
+COPY client.py /app/
+CMD ["python", "client.py"]
+```
+
+#### server.py
+```
+import socket
+
+HOST = '0.0.0.0'
+PORT = 6000
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind((HOST, PORT))
+server_socket.listen()
+print("Server is listening...")
+
+while True:
+    conn, addr = server_socket.accept()
+    message = conn.recv(1024).decode()
+    print(f"Received: {message}")
+    conn.sendall(b'Hello from Server')
+    conn.close()
+```
+
+#### client.py
+```
+import socket
+
+HOST = 'server-container'
+PORT = 6000
+client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client_socket.connect((HOST, PORT))
+client_socket.sendall(b'Hello from Client')
+response = client_socket.recv(1024).decode()
+print(f"Server response: {response}")
+client_socket.close()
+```
+
+#### Steps
+1. Build Docker Images:
+   ```
+   docker build -t tcp-server -f Dockerfile.server .
+   docker build -t tcp-client -f Dockerfile.client .
+   ```
+2. Run Server and Client Containers:
+   ```
+   docker run -d --name tcp-server-container tcp-server
+   docker run -d --name tcp-client-container --network container:tcp-server-container tcp-client
+   ```
+3. Check Logs:
+   ```
+   docker logs -f tcp-server-container
+   ```
